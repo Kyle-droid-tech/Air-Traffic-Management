@@ -36,6 +36,7 @@ x_150NM = ARLON(1,1)*deg+1.5*dlon_100NM*cos(theta);
 y_150NM = ARLON(1,2)*deg+1.5*dlat_100NM*sin(theta);
 
 %%
+%Initial position
 pos_A(1,:) = [137.102473463831, 34.4240061313947]*rad;
 pos_B(1,:) = [137.803514855962, 33.5078947891613]*rad;
 
@@ -65,10 +66,10 @@ Cons_alt = linspace(35000 , 5200, (35000-5200));
 CAS_A = 200 : 10 : 300;
 CAS_B = 200 : 10 : 300;
 
-%a_A = 0;   a_B = 0;   % Case 1
-%a_A = 0.5; a_B = 0.5; % Case 2
-%a_A = 0;   a_B = 0.3; % Case 3
-a_A = 0;   a_B = 0.3; % Case 4
+a_A = 0;   a_B = 0;   % Case 1
+% a_A = 0.5; a_B = 0.5; % Case 2
+% a_A = 0;   a_B = 0.3; % Case 3
+ %a_A = 0;   a_B = 0.3; % Case 4
 t_sep = 90;
 
 initialization
@@ -152,18 +153,18 @@ for kk = size(x,2)-2 : -1 : 1
     end
 end
 
- J_opt_0 = J_opt(:,:,1);                            % Case 4
-delt_f = T_opt_A(:,:,1)-T_opt_B(:,:,1);            % Case 4
-J_opt_0 = J_opt_0.*(delt_f>=90)+10^6.*(delt_f<90); % Case 4
+% J_opt_0 = J_opt(:,:,1);                            % Case 4
+ %delt_f = T_opt_A(:,:,1)-T_opt_B(:,:,1);            % Case 4
+ %J_opt_0 = J_opt_0.*(delt_f>=90)+10^6.*(delt_f<90); % Case 4
 
 
 %%
-%ind_CAS_A_opt(1) = find(abs(CAS_A-CAS_0)<10^-6); % Case 1 to 3 
-%ind_CAS_B_opt(1) = find(abs(CAS_B-CAS_0)<10^-6); % Case 1 to 3
+ind_CAS_A_opt(1) = find(abs(CAS_A-CAS_0)<10^-6); % Case 1 to 3 
+ind_CAS_B_opt(1) = find(abs(CAS_B-CAS_0)<10^-6); % Case 1 to 3
 
- [val, ind] = min(J_opt_0,[],1);           % Case 4
-[~, ind_CAS_B_opt(1)] = min(val);         % Case 4
-ind_CAS_A_opt(1) = ind(ind_CAS_B_opt(1)); % Case 4
+% [val, ind] = min(J_opt_0,[],1);           % Case 4
+% [~, ind_CAS_B_opt(1)] = min(val);         % Case 4
+% ind_CAS_A_opt(1) = ind(ind_CAS_B_opt(1)); % Case 4
 
 
 for kk = 2 : size(x,2)
@@ -184,18 +185,86 @@ for kk = 1 : size(x,2)
 end
 
 
-%dt_opt_A = diff(x')./((TAS_A_opt(1:size(x,2)-1)+TAS_A_opt(2:size(x,2)))/2);
-%dt_opt_B = diff(x')./((TAS_B_opt(1:size(x,2)-1)+TAS_B_opt(2:size(x,2)))/2);
-    dt_opt_A = diff(x')./((TAS_A_opt(1:size(x,2)-1)+TAS_A_opt(2:size(x,2)))/2);
-    dt_opt_B = diff(x')./((TAS_B_opt(1:size(x,2)-1)+TAS_B_opt(2:size(x,2)))/2);
+dt_opt_A = diff(x')./((TAS_A_opt(1:size(x,2)-1)+TAS_A_opt(2:size(x,2)))/2);
+dt_opt_B = diff(x')./((TAS_B_opt(1:size(x,2)-1)+TAS_B_opt(2:size(x,2)))/2);
+%    dt_opt_A = diff(x(kk)')./((TAS_A_opt(kk)+TAS_A_opt(kk))/2);
+%    dt_opt_B = diff(x(kk)')./((TAS_B_opt(kk)+TAS_B_opt(kk))/2);
 
 time_A_opt(1,1) = 0;
 time_B_opt(1,1) = 0;
-
 for kk = 1 : size(x,2)-1
     time_A_opt(kk+1,1) = time_A_opt(kk,1) + dt_opt_A(kk,1);
     time_B_opt(kk+1,1) = time_B_opt(kk,1) + dt_opt_B(kk,1);
 end
+
+%%Protection area
+%Calcurate distance between k and k+1 till k=16 for airplane A
+a_A = zeros(size(x,2)-1,1);
+for ii = 1 : 1 :size(x,2)-1
+    a_A(ii) = (TAS_A_opt(ii+1) - TAS_A_opt(ii)) / dt_opt_A(ii);
+end
+x_det_A = zeros(2000);
+for jj = 1 : 1  : size(dt_opt_A,1)
+     for ii = 1 : 1 : size(TAS_A_opt,1)
+        for t = 1 : 1 : fix(dt_opt_A(jj))
+              x_det_A(t,jj) = x(jj)+  + TAS_A_opt(jj)*t + (a_A(jj)*t^2)/2;
+        end
+     end     
+end
+  x_det_A(x_det_A==0) = [];
+ x_det_A =[0,(x_det_A)];
+%Calcurate distance between k and k+1 till k=16 for airplane B 
+a_B = zeros(size(x,2)-1,1);
+for ii = 1 : 1 :size(x,2)-1
+    a_B(ii) = (TAS_B_opt(ii) - TAS_B_opt(ii+1)) / dt_opt_B(ii);
+end
+x_det_B = zeros(2000);
+for jj = 1 : 1  : size(dt_opt_B,1)
+    for ii = 1 : 1 : size(TAS_B_opt,1)
+        for t = 1 : 1 : fix(dt_opt_B(jj))
+              x_det_B(t,jj) =x(jj) +  TAS_B_opt(jj)*t + (a_B(jj)*t^2)/2;
+         end
+    end     
+end
+  x_det_B(x_det_B==0) = [];
+  x_det_B =[0, (x_det_B)];
+  
+  %
+  pos_det_A(1,:) = pos_A(1,:);
+  pos_det_B(1,:) = pos_B(1,:);
+for ii = 2 : size(x_det_A,2)
+   [pos_det_A(ii,2), pos_det_A(ii,1)] = eta_zeta2phi_theta(x_det_A(ii)/R0,0,r0_A,r1_A,r2_A);
+   [pos_det_B(ii,2), pos_det_B(ii,1)] = eta_zeta2phi_theta(x_det_B(ii)/R0,0,r0_B,r1_B,r2_B);
+end
+p_det_A = pos_det_A / rad;
+p_det_B = pos_det_B / rad;
+
+%%Distance Calcuration between airplane A and B every 1 sec
+a = 6378137;
+b = 6356752.314;
+e2 = 1 - (b^2/a^2);
+
+L = length(x_det_A)-1;
+
+mu_y = zeros(L,1);
+W = zeros(L,1);
+M = zeros(L,1);
+N = zeros(L,1);
+dx = zeros(L,1);
+dy = zeros(L,1);
+D = zeros(L,1);
+%for A
+for i=1:L
+    mu_y(i,1) = deg2rad((pos_det_A(i,2) + pos_det_B(i,2))/2);
+    W(i,1) = sqrt(1-e2 * ((sin(mu_y(i,1)).^2)));
+    M(i,1) = a*(1 - e2)/(W(i,1).^3);
+    N(i,1) = a/W(i,1);
+    dy(i,1) = deg2rad(pos_det_B(i,2) - pos_det_A(i,2));
+    dx(i,1) = deg2rad(pos_det_B(i,1) - pos_det_A(i,1));
+    
+    D(i,1) = sqrt((dy(i,1)*M(i,1)).^2 + (dx(i,1)*N(i,1)*cos(mu_y(i,1))).^2);
+end
+
 %%
 % disp(J_opt(ind_CAS_A_opt(1),ind_CAS_B_opt(1),1));
 disp(['Topt(A) [s] = ',num2str(T_opt_A(ind_CAS_A_opt(1),ind_CAS_B_opt(1),1))]);
@@ -218,24 +287,24 @@ fs  = 14;
  set(gca,'fontweight','bold','fontsize',fs)
 
 %%
-x = -flip(x)/ml2km/10^3;
+x2 = -flip(x)/ml2km/10^3;
 
 figure;
 hold on; grid on;
-p1 = plot(x,CAS_A(ind_CAS_A_opt),'-r');
-plot(x(2:end-1),CAS_A(ind_CAS_A_opt(2:end-1)),'ro','MarkerFaceColor','r','MarkerSize',3)
-p2 = plot(x,CAS_B(ind_CAS_B_opt),'--b');
-plot(x(2:end-1),CAS_B(ind_CAS_B_opt(2:end-1)),'bo','MarkerFaceColor','b','MarkerSize',3)
-plot(x(1,1),CAS_A(ind_CAS_A_opt(1)),'ro')
-plot(x(1,1),CAS_B(ind_CAS_B_opt(1)),'bo')
-p3 = plot(x(1,end),210,'mo');
+p1 = plot(x2,CAS_A(ind_CAS_A_opt),'-r');
+plot(x2(2:end-1),CAS_A(ind_CAS_A_opt(2:end-1)),'ro','MarkerFaceColor','r','MarkerSize',3)
+p2 = plot(x2,CAS_B(ind_CAS_B_opt),'--b');
+plot(x2(2:end-1),CAS_B(ind_CAS_B_opt(2:end-1)),'bo','MarkerFaceColor','b','MarkerSize',3)
+plot(x2(1,1),CAS_A(ind_CAS_A_opt(1)),'ro')
+plot(x2(1,1),CAS_B(ind_CAS_B_opt(1)),'bo')
+p3 = plot(x2(1,end),210,'mo');
 legend([p1,p2,p3],'Aircraft A','Aircraft B','Terminal point')
 set(gca,'YLim',[200 300])
 xlabel('$$ x \ [\mathrm{NM}] $$','Interpreter','latex','fontweight','bold','fontsize',fs)
 ylabel('$$ V_{\mathrm{CAS}} \ [\mathrm{kt}] $$','Interpreter','latex','fontweight','bold','fontsize',fs)
-%text(-140,290,'$$ J=\Sigma \int \mu \mathrm{d}t $$','Interpreter','latex','fontweight','bold','fontsize',fs-2)
+ text(-140,290,'$$ J=\Sigma \int \mu \mathrm{d}t $$','Interpreter','latex','fontweight','bold','fontsize',fs-2)
 % text(-140,290,'$$ J=\Sigma \int (\mu+0.5) \mathrm{d}t $$','Interpreter','latex','fontweight','bold','fontsize',fs-2)
-text(-143,290,'$$ J=\int (mu_A \mathrm{d}t_A+\int (\mu_B+0.3) \mathrm{d}t_B $$','Interpreter','latex','fontweight','bold','fontsize',fs-2)
+%text(-143,290,'$$ J=\int \mu_A \mathrm{d}t_A+\int (\mu_B+0.3) \mathrm{d}t_B $$','Interpreter','latex','fontweight','bold','fontsize',fs-2)
 set(gca,'fontweight','bold','fontsize',fs)
 
 %%
@@ -250,12 +319,3 @@ set(gca,'fontweight','bold','fontsize',fs)
  set(gca,'YLim',[200 300])
  title('$$ J=\Sigma \int \mu \mathrm{d}t $$','Interpreter','latex')
  title('$$ J=\Sigma \int (\mu+0.5) \mathrm{d}t $$','Interpreter','latex')
- %%
- 
- figure;
- hold on; grid on;
- plot(time_A_opt,x,'-o');
- plot(time_B_opt,x,'-o');
- %txt = ['delta:',num2str(delta)];
- %text(-75,110,txt,'fontweight','bold','fontsize',fs-2);
- 
