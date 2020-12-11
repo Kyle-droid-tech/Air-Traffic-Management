@@ -1,1 +1,1 @@
-Program to calcurate the arrival airplanes by using optimal control.
+Programs to calcurate the arrival airplanes by using optimal control.
